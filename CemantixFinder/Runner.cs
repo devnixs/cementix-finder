@@ -17,7 +17,7 @@ public class Runner
         decimal currentBestShot = 0m;
         var pendingScores = new Dictionary<string, WordInfo>
         {
-            { "stylo",   new("stylo", null, -20) },
+            { "oiseau",   new("oiseau", null, -20) },
         };
 
         var pendingLexicalField = new Dictionary<string, WordInfo>

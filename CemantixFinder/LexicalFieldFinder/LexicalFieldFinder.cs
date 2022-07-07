@@ -42,6 +42,8 @@ public class FrenchLexicalFieldFinder : ILexicalFieldFinder
             using var response = await client.SendAsync(request);
             var html = await response.Content.ReadAsStringAsync();
 
+            html = Regex.Replace(html, "<span class=\"a-bak\">(.)<\\/span>", "$1");
+
             var matches = Regex.Matches(html, "class= ?\"l-black ?\" href= ?\".+?\">(.+?)<\\/a>");
             return matches.Select(i => i.Groups[1].Value.ToLowerInvariant()).ToArray();
         }
