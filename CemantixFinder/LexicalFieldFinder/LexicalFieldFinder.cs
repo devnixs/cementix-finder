@@ -18,7 +18,7 @@ public class FrenchLexicalFieldFinder : ILexicalFieldFinder
     public string Language => Languages.French;
 
     public static string HttpClientName = "rimessolides.com";
-    
+
     public FrenchLexicalFieldFinder(IHttpClientFactory httpClientFactory)
     {
         _httpClientFactory = httpClientFactory;
@@ -26,7 +26,7 @@ public class FrenchLexicalFieldFinder : ILexicalFieldFinder
 
     public async Task<string[]> GetRelatedWords(string word)
     {
-       // var baseUrl = "https://bf37-176-161-235-14.ngrok.io/test";
+        // var baseUrl = "https://bf37-176-161-235-14.ngrok.io/test";
         var baseUrl = "https://www.rimessolides.com/motscles.aspx?m=";
 
         var client = _httpClientFactory.CreateClient(HttpClientName);
@@ -43,9 +43,10 @@ public class FrenchLexicalFieldFinder : ILexicalFieldFinder
             var html = await response.Content.ReadAsStringAsync();
 
             html = Regex.Replace(html, "<span class=\"a-bak\">(.)<\\/span>", "$1");
+            html = Regex.Replace(html, "<span class=\"l-black\">(.+?)</span>", "$1");
 
             var matches = Regex.Matches(html, "class= ?\"l-black ?\" href= ?\".+?\">(.+?)<\\/a>");
-            return matches.Select(i => i.Groups[1].Value.ToLowerInvariant()).ToArray();
+            return matches.Select(i => i.Groups[1].Value.ToLowerInvariant().Replace(",", "")).Where(i => !i.Contains(" ")).ToArray();
         }
     }
 }

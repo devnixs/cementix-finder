@@ -12,17 +12,19 @@ public class Runner
     }
 
 
-    public async Task Run()
+    public async Task Run(string startingWord)
     {
         decimal currentBestShot = 0m;
+        var startTime = DateTimeOffset.UtcNow;
         var pendingScores = new Dictionary<string, WordInfo>
         {
-            { "oiseau",   new("oiseau", null, -20) },
+            {startingWord, new(startingWord, null, -20)},
         };
 
         var pendingLexicalField = new Dictionary<string, WordInfo>
         {
         };
+        var totalRequests = 0;
 
         var closedList = new Dictionary<string, WordInfo>();
 
@@ -32,15 +34,17 @@ public class Runner
             {
                 var entry = pendingScores.MaxBy(i => i.Value.Heuristic).Value;
                 pendingScores.Remove(entry.Name);
+                totalRequests++;
                 var scoring = await _gameClient.GetWordScore(entry.Name);
-               // await Task.Delay(TimeSpan.FromSeconds(1));
-                entry = entry with { Score = scoring.Score };
+                entry = entry with {Score = scoring.Score};
 
                 if (scoring.Score == 100)
                 {
-                    ConsoleWrite("###########", ConsoleColor.Cyan);
-                    ConsoleWrite("Found word " + entry.Name, ConsoleColor.Cyan);
-                    ConsoleWrite("###########", ConsoleColor.Cyan);
+                    ConsoleWrite("###############################", ConsoleColor.Cyan);
+                    ConsoleWrite($"Solution: {entry.Name} trouvée en {totalRequests} coups et {(DateTimeOffset.UtcNow-startTime).TotalSeconds :0} secondes", ConsoleColor.Cyan);
+                    ConsoleWrite(GetWordChain(entry, closedList), ConsoleColor.Cyan);
+                    ConsoleWrite("###############################", ConsoleColor.Cyan);
+
                     return;
                 }
 
@@ -49,12 +53,12 @@ public class Runner
                 if (scoring.Score > currentBestShot)
                 {
                     currentBestShot = scoring.Score;
-                    ConsoleWrite($"{entry.Name} => {entry.Score}", ConsoleColor.DarkRed);
+                    ConsoleWrite($"{GetWordChain(entry, closedList)} = {entry.Score}", ConsoleColor.DarkRed);
                     break;
                 }
                 else
                 {
-                    ConsoleWrite($"\t {entry.Name} => {entry.Score}");
+                    ConsoleWrite($"{GetWordChain(entry, closedList)} = {entry.Score}");
                 }
             }
 
@@ -65,12 +69,13 @@ public class Runner
                 var words = await _lexicalFieldFinder.GetRelatedWords(entry.Name);
                 if (words.Length == 0)
                 {
-                    ConsoleWrite($"\t found {words.Length} words related to {entry.Name}", ConsoleColor.Yellow);
+                    ConsoleWrite($"aucun mot trouvé similaire à {entry.Name}", ConsoleColor.Yellow);
                 }
                 else
                 {
-                    ConsoleWrite($"\t found {words.Length} words related to {entry.Name}");
+                    ConsoleWrite($"{words.Length} mots trouvés similaires à {entry.Name}", ConsoleColor.Green);
                 }
+
                 foreach (var word in words)
                 {
                     if (pendingScores.ContainsKey(word) || pendingLexicalField.ContainsKey(word) || closedList.ContainsKey(word))
@@ -78,7 +83,10 @@ public class Runner
                         continue;
                     }
 
-                    pendingScores.Add(word, new WordInfo(word, null, entry.Score.Value));
+                    pendingScores.Add(word, new WordInfo(word, null, entry.Score.Value)
+                    {
+                        PreviousWord = entry.Name
+                    });
                 }
 
                 closedList.Add(entry.Name, entry);
@@ -91,11 +99,31 @@ public class Runner
         }
 
         var closestFinds = closedList.OrderByDescending(i => i.Value.Score).Take(20).ToArray();
-        ConsoleWrite("Could not find word. Closest guesses");
-        foreach (var closestFind in closestFinds)
+        ConsoleWrite("Solution non trouvée.");
+        if (closestFinds.Any())
         {
-            ConsoleWrite($"{closestFind.Key} => {closestFind.Value.Score}");
+            ConsoleWrite("Mots les plus proches:");
+            foreach (var closestFind in closestFinds)
+            {
+                ConsoleWrite($"{closestFind.Key} => {closestFind.Value.Score}");
+            }
         }
+    }
+
+    private string GetWordChain(WordInfo word, Dictionary<string, WordInfo> closedList)
+    {
+        var backTrace = new List<string>();
+        var current = word;
+
+        while (current != null)
+        {
+            backTrace.Add(current.Name);
+            current = !string.IsNullOrEmpty(current.PreviousWord) && closedList.ContainsKey(current.PreviousWord) ? closedList[current.PreviousWord] : null;
+        }
+
+        backTrace.Reverse();
+        var trace = string.Join(" => ", backTrace);
+        return trace;
     }
 
     private void ConsoleWrite(string message, ConsoleColor? fg = null, ConsoleColor? bg = null)
@@ -117,4 +145,5 @@ public class Runner
 
 public record WordInfo(string Name, decimal? Score, decimal Heuristic)
 {
+    public string PreviousWord { get; set; }
 }

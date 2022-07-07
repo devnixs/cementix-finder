@@ -11,6 +11,13 @@ static class Program
 {
     static async Task<int> Main(string[] args)
     {
+        string? word = "";
+        while (string.IsNullOrEmpty(word))
+        {
+            Console.WriteLine("Choisissez un mot de départ:");
+            word = Console.ReadLine();
+        }
+        
         var host = Host.CreateDefaultBuilder(args)
             .ConfigureServices((_, services) =>
             {
@@ -34,7 +41,6 @@ static class Program
                     options.IncludeScopes = false;
                 });
                 logging.SetMinimumLevel(LogLevel.Warning);
-                logging.AddEventLog();
             })
             .Build();
 
@@ -44,9 +50,10 @@ static class Program
             var services = serviceScope.ServiceProvider;
 
             var myService = services.GetRequiredService<Runner>();
-            await myService.Run();
+            await myService.Run(word);
         }
 
+        Console.ReadLine();
         return 0;
     }
 }
