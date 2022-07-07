@@ -34,16 +34,26 @@ public class GameClient
 
             using var response = await httpClient.SendAsync(request);
             var json = await response.Content.ReadAsStringAsync();
-            var decoded = JsonSerializer.Deserialize<WordScore>(json);
-            if (decoded == null)
+            try
+            {
+                var decoded = JsonSerializer.Deserialize<WordScore>(json);
+                if (decoded == null)
+                {
+                    return new WordScore()
+                    {
+                        Score = 0,
+                    };
+                }
+
+                return decoded with {Score = decoded.Score * 100};
+            }
+            catch (Exception)
             {
                 return new WordScore()
                 {
                     Score = 0,
                 };
             }
-
-            return decoded with { Score = decoded.Score * 100 };
         }
     }
 }

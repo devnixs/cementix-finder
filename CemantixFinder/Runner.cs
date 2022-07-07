@@ -28,6 +28,7 @@ public class Runner
 
         var closedList = new Dictionary<string, WordInfo>();
 
+        decimal previous = -100;
         while (true)
         {
             while (pendingScores.Any())
@@ -41,7 +42,8 @@ public class Runner
                 if (scoring.Score == 100)
                 {
                     ConsoleWrite("###############################", ConsoleColor.Cyan);
-                    ConsoleWrite($"Solution: {entry.Name} trouvée en {totalRequests} coups et {(DateTimeOffset.UtcNow-startTime).TotalSeconds :0} secondes", ConsoleColor.Cyan);
+                    ConsoleWrite($"Solution: {entry.Name} trouvée en {totalRequests} coups et {(DateTimeOffset.UtcNow - startTime).TotalSeconds:0} secondes",
+                        ConsoleColor.Cyan);
                     ConsoleWrite(GetWordChain(entry, closedList), ConsoleColor.Cyan);
                     ConsoleWrite("###############################", ConsoleColor.Cyan);
 
@@ -50,16 +52,25 @@ public class Runner
 
                 pendingLexicalField.Add(entry.Name, entry);
 
-                if (scoring.Score > currentBestShot)
+                if (scoring.Score > entry.Heuristic)
                 {
                     currentBestShot = scoring.Score;
-                    ConsoleWrite($"{GetWordChain(entry, closedList)} = {entry.Score}", ConsoleColor.DarkRed);
+                    ConsoleWrite($"{GetWordChain(entry, closedList)} = {entry.Score:0.00}°C", ConsoleColor.DarkRed);
                     break;
                 }
                 else
                 {
-                    ConsoleWrite($"{GetWordChain(entry, closedList)} = {entry.Score}");
+                    ConsoleWrite($"{GetWordChain(entry, closedList)} = {entry.Score:0.00}°C");
                 }
+
+                if (previous > entry.Heuristic)
+                {
+                    ConsoleWrite($"----", ConsoleColor.Yellow);
+                    previous = -100;
+                    break;
+                }
+
+                previous = entry.Heuristic;
             }
 
             if (pendingLexicalField.Any())
@@ -78,10 +89,23 @@ public class Runner
 
                 foreach (var word in words)
                 {
-                    if (pendingScores.ContainsKey(word) || pendingLexicalField.ContainsKey(word) || closedList.ContainsKey(word))
+                    if (pendingScores.ContainsKey(word) && pendingScores[word].Heuristic < entry.Score)
+                    {
+                        pendingScores[word] = pendingScores[word] with {Heuristic = entry.Score.Value, PreviousWord = entry.Name};
+                        continue;
+                    }
+
+                    if (pendingLexicalField.ContainsKey(word) && pendingLexicalField[word].Heuristic < entry.Score)
+                    {
+                        pendingLexicalField[word] = pendingLexicalField[word] with {Heuristic = entry.Score.Value, PreviousWord = entry.Name};
+                        continue;
+                    }
+
+                    if (closedList.ContainsKey(word) || pendingScores.ContainsKey(word) || pendingLexicalField.ContainsKey(word))
                     {
                         continue;
                     }
+
 
                     pendingScores.Add(word, new WordInfo(word, null, entry.Score.Value)
                     {
@@ -105,7 +129,7 @@ public class Runner
             ConsoleWrite("Mots les plus proches:");
             foreach (var closestFind in closestFinds)
             {
-                ConsoleWrite($"{closestFind.Key} => {closestFind.Value.Score}");
+                ConsoleWrite($"{closestFind.Key} => {closestFind.Value.Score:0.00}°C");
             }
         }
     }
@@ -117,7 +141,7 @@ public class Runner
 
         while (current != null)
         {
-            backTrace.Add(current.Name);
+            backTrace.Add($"{current.Name} ({current.Score:0}°C)");
             current = !string.IsNullOrEmpty(current.PreviousWord) && closedList.ContainsKey(current.PreviousWord) ? closedList[current.PreviousWord] : null;
         }
 

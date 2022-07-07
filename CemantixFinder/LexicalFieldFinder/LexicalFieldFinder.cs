@@ -45,8 +45,9 @@ public class FrenchLexicalFieldFinder : ILexicalFieldFinder
             html = Regex.Replace(html, "<span class=\"a-bak\">(.)<\\/span>", "$1");
             html = Regex.Replace(html, "<span class=\"l-black\">(.+?)</span>", "$1");
 
-            var matches = Regex.Matches(html, "class= ?\"l-black ?\" href= ?\".+?\">(.+?)<\\/a>");
-            return matches.Select(i => i.Groups[1].Value.ToLowerInvariant().Replace(",", "")).Where(i => !i.Contains(" ")).ToArray();
+            var matches = Regex.Matches(html, "class= ?(\"|')l-black ?(\"|') href= ?(\"|').+?(\"|')>(.+?)<\\/a>");
+            var words = matches.Select(i => i.Groups[5].Value.ToLowerInvariant().Replace(",", "")).Where(i => !i.Contains(" ")).Where(i => i != "'").ToArray();
+            return words;
         }
     }
 }
